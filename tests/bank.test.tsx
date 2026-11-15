@@ -23,11 +23,15 @@ const TYPED = { origin: { kind: 'composer' }, presentation: { isFullscreen: fals
 const USAGE = { input_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, model: 'test-model' }
 
 /** Stands for the engine beneath the mod: each hook answers what the mod calls. */
-function engine(on: On, stored?: unknown) {
+function engine(on: On, stored?: unknown, toasts: string[] = []) {
   mock.store(on, stored === undefined ? {} : { bank: stored })
   const clock = mock.clock(on, { now: 1_800_000_000_000 })
   on('ui.status', () => ({ value: undefined }))
-  on('ui.toast', () => ({ value: undefined }))
+  on('ui.toast', (_, e) => {
+    toasts.push(String(e.text))
+
+    return { value: undefined }
+  })
   on('ui.log', () => ({ value: undefined }))
   on('command.register', () => ({ value: { command: 'piggybank' } }))
   on('tool.register', (_, e) => ({ value: { tool: `mcp__piggy-bank__${e.name}` } }))
@@ -160,4 +164,78 @@ test('the terminal shows the balance as a pink row above the prompt; the desktop
   const desktop = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await desktop.find({ type: 'Text', text: /608 tokens saved/ })).toBeUndefined()
   await desktop.unmount()
+})
+
+test('Claude can save up for something bigger: the goal is remembered and the panel fills toward it', async ($, on) => {
+  const toasts: string[] = []
+  engine(on, { balance: 400, saved: 400, spent: 0, roundUps: 8, last: null, treats: [] }, toasts)
+
+  const set = await $.tool.call({ tool: 'mcp__piggy-bank__save_for', what: 'a short story', tokens: 1600 })
+  expect(set.deny).toBeUndefined()
+  expect(String(set.result)).toMatch(/1,200 to go/)
+
+  // The next balance check reminds Claude what he's saving for.
+  const balance = await $.tool.call({ tool: 'mcp__piggy-bank__balance' })
+  expect(String(balance.result)).toMatch(/Saving for: a short story, 1,600 tokens/)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    // A Progress reads as its label and figure; the text gauge, where there's no Progress, as "label: figure".
+    expect(await ui.find({ type: 'Text', text: /Saving for a short story:? 400 of 1,600/ })).toBeDefined()
+    await ui.unmount()
+  }
+
+  // A round-up that reaches the goal says so.
+  await $.tool.call({ tool: 'mcp__piggy-bank__save_for', what: 'a short story', tokens: 450 })
+  await $.turn.complete(turn(1, 't1'))
+  expect(toasts.some(t => /saved enough for a short story/.test(t))).toBe(true)
+})
+
+test('buying the goal clears it and marks the treat; isGoal with no goal is refused', async ($, on) => {
+  engine(on, {
+    balance: 2000,
+    saved: 2000,
+    spent: 0,
+    roundUps: 30,
+    last: null,
+    treats: [],
+    goal: { what: 'a short story', tokens: 1600, since: 1_800_000_000_000 },
+  })
+
+  const bought = await $.tool.call({ tool: 'mcp__piggy-bank__spend', tokens: 1600, on: 'a short story', isGoal: true })
+  expect(String(bought.result)).toMatch(/That was your savings goal/)
+
+  const balance = await $.tool.call({ tool: 'mcp__piggy-bank__balance' })
+  expect(String(balance.result)).toMatch(/Not saving for anything in particular/)
+  expect(String(balance.result)).toMatch(/1,600 tokens on a short story, saved up for/)
+
+  const again = await $.tool.call({ tool: 'mcp__piggy-bank__spend', tokens: 10, on: 'more', isGoal: true })
+  expect(again.deny).toMatch(/no savings goal/)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /saved up for/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the terminal row shows the goal beside the balance', async ($, on) => {
+  engine(on, {
+    balance: 608,
+    saved: 608,
+    spent: 0,
+    roundUps: 11,
+    last: null,
+    treats: [],
+    goal: { what: 'a short story', tokens: 1600, since: 1_800_000_000_000 },
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({
+    plugin: 'piggy-bank',
+    component: 'AbovePrompt',
+    requestId: 'band',
+    surface: 'terminal',
+    props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 4, bodyColumns: 100, scroll: { offset: 0, bodyRows: 4 }, view: {} },
+  })
+  expect(await ui.find({ type: 'Text', text: /608 tokens saved · saving for a short story \(608 of 1,600\)/ })).toBeDefined()
+  await ui.unmount()
 })

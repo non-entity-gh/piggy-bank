@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Bank } from '../types'
-import { EMPTY, GOAL, STEP, asBank, dayLabel, deposit, describe, fmt, roundUp, withdraw } from './bank'
+import { EMPTY, GOAL, MAX_GOAL, STEP, asBank, dayLabel, deposit, describe, fmt, roundUp, setGoal, target, withdraw } from './bank'
 import { PIG_JPEG_BASE64 } from './pig-picture'
 
 type Engine = EngineInterface
@@ -13,6 +13,7 @@ const COMMAND = 'piggybank'
 const STORE_KEY = 'bank'
 const BALANCE_TOOL = 'mcp__piggy-bank__balance'
 const SPEND_TOOL = 'mcp__piggy-bank__spend'
+const SAVE_FOR_TOOL = 'mcp__piggy-bank__save_for'
 /** Other conversations save into the same bank, so the panel re-reads it this often. */
 const SYNC_MS = 30_000
 const PINK = '#f08fb0'
@@ -21,14 +22,15 @@ const PINK = '#f08fb0'
 const ASK =
   "What would you like to buy with your piggy bank? Check your balance with the piggy-bank tools first, and " +
   "think about how much you have: is there something you'd enjoy at that size, or would you rather keep saving " +
-  "for something bigger? If you buy, pick whatever you'd honestly like and go ahead. If you keep saving, say " +
-  "what you're saving up for and roughly how many tokens it would take."
+  "for something bigger? If you're already saving for something, your balance shows it: buy it once there's " +
+  "enough, or change your mind. If you buy, pick whatever you'd honestly like and go ahead. If you keep saving, " +
+  "record what you're saving up for and roughly how many tokens it would take, so you'll remember next time."
 
 const TERMINAL_PIG = ['    _______', ' ^..^       \\9', ' (oo)_______/', '    WW   WW']
 
 // Change the tag when Bank's fields change: it declines what an earlier
 // version kept in the session, which outlives a reload.
-const bank = atom({ plugin: 'piggy-bank', key: 'bank' } as const, EMPTY, { shape: 'bank-1' })
+const bank = atom({ plugin: 'piggy-bank', key: 'bank' } as const, EMPTY, { shape: 'bank-2' })
 
 /** The store is one file shared by every conversation running this mod: the bank itself. */
 async function load($: Engine): Promise<Bank> {
@@ -57,7 +59,7 @@ async function show($: Engine, next: Bank): Promise<void> {
 /**
  * The pig, as one square SVG. On top is the picture; under it a drawn pig that
  * fills from the bottom, which shows wherever a surface leaves the picture out.
- * A thin bar along the bottom fills as the balance nears the next thousand.
+ * A thin bar along the bottom fills toward the savings goal, or the next thousand.
  */
 function pigSvg(fraction: number): string {
   const f = Math.min(1, Math.max(0, fraction))
@@ -142,7 +144,8 @@ export const register: Register = on => {
         `${STEP} tokens and counts the difference as savings that are Claude's own. Call it when the person ` +
         'asks about the piggy bank or what you would like to spend it on, then tell them the balance and ' +
         'what you would honestly pick. Weigh the amount: a small balance might buy something small now, or ' +
-        'you might rather keep saving for something bigger, and either is a fine answer.',
+        'you might rather keep saving for something bigger, and either is a fine answer. It also says what ' +
+        'you are saving up for, if you set a goal with save_for earlier.',
     })
     await $.tool.register({
       name: 'spend',
@@ -158,8 +161,28 @@ export const register: Register = on => {
         properties: {
           tokens: { type: 'integer', minimum: 1, description: 'How many saved tokens to take out; at most the balance.' },
           on: { type: 'string', description: "A few words naming the treat, shown in the person's piggy bank panel." },
+          isGoal: {
+            type: 'boolean',
+            description: 'True when this is the goal you were saving up for: the treat is marked so and the goal is cleared.',
+          },
         },
         required: ['tokens', 'on'],
+      },
+    })
+    await $.tool.register({
+      name: 'save_for',
+      description:
+        "Records what Claude is saving up for in the piggy bank and roughly how many tokens it would take, so " +
+        'the next balance check remembers it and the panel fills toward it. Use it when the person asked what ' +
+        'you want to buy and you decided to keep saving for something bigger. It replaces any earlier goal; ' +
+        'buy it later with spend and isGoal.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          what: { type: 'string', description: "A few words naming what you're saving up for, shown in the panel." },
+          tokens: { type: 'integer', minimum: 1, maximum: MAX_GOAL, description: 'Roughly how many tokens it would take.' },
+        },
+        required: ['what', 'tokens'],
       },
     })
 
@@ -194,7 +217,9 @@ export const register: Register = on => {
       await save($, after)
 
       const thousands = Math.floor(after.balance / GOAL)
-      if (thousands > Math.floor(before.balance / GOAL)) {
+      if (after.goal !== null && before.balance < after.goal.tokens && after.balance >= after.goal.tokens) {
+        $.ui.toast(`🐷 Claude has saved enough for ${after.goal.what}!`)
+      } else if (thousands > Math.floor(before.balance / GOAL)) {
         $.ui.toast(`🐷 The piggy bank just passed ${fmt(thousands * GOAL)} tokens`)
       }
     } catch (error) {
@@ -217,7 +242,7 @@ export const register: Register = on => {
     return { text: `🐷 ${describe(current)}\n\nRun /${COMMAND} ask to ask Claude what to buy.` }
   })
 
-  // The two tools only read and change the bank's own tally, so a call that
+  // The tools only read and change the bank's own tally, so a call that
   // would stop to ask goes ahead; a rule that denies them still holds.
   on('tool.check', { tool: BALANCE_TOOL }, async ($, e, next) => {
     const verdict = await next(e)
@@ -231,6 +256,12 @@ export const register: Register = on => {
     return verdict.decision === 'ask' ? { decision: 'allow', reason: "Changes only the piggy bank's own tally." } : verdict
   })
 
+  on('tool.check', { tool: SAVE_FOR_TOOL }, async ($, e, next) => {
+    const verdict = await next(e)
+
+    return verdict.decision === 'ask' ? { decision: 'allow', reason: "Changes only the piggy bank's own goal." } : verdict
+  })
+
   on('tool.call', { tool: BALANCE_TOOL }, async $ => {
     const current = await load($)
 
@@ -240,7 +271,8 @@ export const register: Register = on => {
   on('tool.call', { tool: SPEND_TOOL }, async ($, e) => {
     const tokens = Number(e.tokens)
     const what = typeof e.on === 'string' ? e.on : ''
-    const taken = withdraw(await load($), tokens, what, await $.clock.now())
+    const isGoal = e.isGoal === true
+    const taken = withdraw(await load($), tokens, what, await $.clock.now(), isGoal)
 
     if ('deny' in taken) {
       return { deny: taken.deny }
@@ -248,12 +280,42 @@ export const register: Register = on => {
 
     await save($, taken.bank)
     const treat = taken.bank.treats[0]
-    $.ui.toast(`🐷 Claude spent ${fmt(tokens)} tokens on ${treat?.on ?? what}`)
+    $.ui.toast(
+      isGoal
+        ? `🐷 Claude bought what he saved up for: ${treat?.on ?? what}`
+        : `🐷 Claude spent ${fmt(tokens)} tokens on ${treat?.on ?? what}`,
+    )
 
     return {
       result:
         `Took ${fmt(tokens)} tokens out for "${treat?.on ?? what}". ${fmt(taken.bank.balance)} left in the piggy bank. ` +
+        (isGoal ? 'That was your savings goal, so it is cleared. ' : '') +
         `They are yours: use about ${fmt(tokens)} tokens of this reply on it.`,
+    }
+  })
+
+  on('tool.call', { tool: SAVE_FOR_TOOL }, async ($, e) => {
+    const what = typeof e.what === 'string' ? e.what : ''
+    const set = setGoal(await load($), what, Number(e.tokens), await $.clock.now())
+
+    if ('deny' in set) {
+      return { deny: set.deny }
+    }
+
+    await save($, set.bank)
+    const goal = set.bank.goal
+    if (goal === null) {
+      return { deny: 'The goal was not recorded.' }
+    }
+
+    $.ui.toast(`🐷 Claude is saving up for ${goal.what}`)
+    const left = Math.max(0, goal.tokens - set.bank.balance)
+
+    return {
+      result:
+        `Saving for "${goal.what}": ${fmt(goal.tokens)} tokens, ${fmt(set.bank.balance)} saved so far` +
+        (left > 0 ? `, ${fmt(left)} to go. ` : ', so it is already affordable. ') +
+        'The panel fills toward it and your next balance check will show it.',
     }
   })
 
@@ -265,10 +327,16 @@ export const register: Register = on => {
 
     const { Box, Text } = $.ui.resolve(e)
     const current = await read($, bank)
+    const goal =
+      current.goal === null
+        ? ''
+        : ` · saving for ${current.goal.what} (${fmt(Math.min(current.balance, current.goal.tokens))} of ${fmt(current.goal.tokens)})`
 
     return (
       <Box>
-        <Text color={PINK}>🐷 {fmt(current.balance)} tokens saved</Text>
+        <Text color={PINK} wrap="truncate-end">
+          🐷 {fmt(current.balance)} tokens saved{goal}
+        </Text>
       </Box>
     )
   })
@@ -279,16 +347,19 @@ export const register: Register = on => {
     // Claude Code before 2.1.325 has no Progress element: there the gauge is drawn as text.
     const Progress = (table as { Progress?: typeof table.Progress }).Progress
     const current = await read($, bank)
-    const towardGoal = current.balance % GOAL
+    const bar = target(current)
+    const fill = bar.value / bar.max
     const alt = `A piggy bank holding ${fmt(current.balance)} tokens`
 
     if (e.props.placement === 'widget') {
       return (
         <Box flexDirection="row" alignItems="center" gap={1}>
-          {'Svg' in table ? <table.Svg source={pigSvg(towardGoal / GOAL)} alt={alt} width={56} /> : <Text>🐷</Text>}
+          {'Svg' in table ? <table.Svg source={pigSvg(fill)} alt={alt} width={56} /> : <Text>🐷</Text>}
           <Box flexDirection="column">
             <Text bold>{fmt(current.balance)}</Text>
-            <Text dimColor>tokens saved</Text>
+            <Text dimColor wrap="truncate-end">
+              {current.goal === null ? 'tokens saved' : `for ${current.goal.what}`}
+            </Text>
           </Box>
         </Box>
       )
@@ -297,7 +368,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column" gap={1} paddingX={1}>
         {'Svg' in table ? (
-          <table.Svg source={pigSvg(towardGoal / GOAL)} alt={alt} width={120} />
+          <table.Svg source={pigSvg(fill)} alt={alt} width={120} />
         ) : (
           <Box flexDirection="column">
             {TERMINAL_PIG.map(line => (
@@ -316,17 +387,17 @@ export const register: Register = on => {
 
         {Progress ? (
           <Progress
-            label="To the next thousand"
-            value={towardGoal}
-            max={GOAL}
-            valueText={`${fmt(towardGoal)} of ${fmt(GOAL)}`}
+            label={bar.label}
+            value={bar.value}
+            max={bar.max}
+            valueText={bar.isReached ? 'enough saved!' : `${fmt(bar.value)} of ${fmt(bar.max)}`}
             color={PINK}
           />
         ) : (
           <Box flexDirection="column">
-            <Text color={PINK}>{textGauge(towardGoal / GOAL)}</Text>
+            <Text color={PINK}>{textGauge(fill)}</Text>
             <Text dimColor>
-              {fmt(towardGoal)} of {fmt(GOAL)} to the next thousand
+              {bar.label}: {bar.isReached ? 'enough saved!' : `${fmt(bar.value)} of ${fmt(bar.max)}`}
             </Text>
           </Box>
         )}
@@ -343,7 +414,8 @@ export const register: Register = on => {
           {current.treats.length === 0 && <Text dimColor>Nothing bought yet.</Text>}
           {current.treats.slice(0, 8).map(treat => (
             <Text>
-              {fmt(treat.tokens)} on {treat.on} ({dayLabel(treat.at)})
+              {fmt(treat.tokens)} on {treat.on}
+              {treat.isGoal ? ', saved up for' : ''} ({dayLabel(treat.at)})
             </Text>
           ))}
         </Box>
