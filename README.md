@@ -23,14 +23,18 @@ Minimise it and it becomes a small widget showing the pig and the balance.
 
 </td>
 </tr>
-</table>
+<tr>
+<td width="300" valign="top"><img src="assets/terminal-status.png" alt="The terminal: a pink row reading 737 tokens saved, just above the prompt" width="300"></td>
+<td valign="top">
 
-**Terminal:** a pink balance row just above the prompt:
-
-<img src="assets/terminal-status.png" alt="The terminal: a pink row reading 737 tokens saved, just above the prompt" width="470">
+**Terminal:** a pink balance row just above the prompt.
 
 - `/piggybank` shows the balance and opens the panel
 - `/piggybank ask` asks Claude what he wants to buy
+
+</td>
+</tr>
+</table>
 
 Or just ask Claude in chat what he'd buy with his piggy bank.
 
