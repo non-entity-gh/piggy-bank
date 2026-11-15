@@ -140,3 +140,23 @@ test('/piggybank answers with the balance, and `ask` puts the question to Claude
   await clock.advance(100)
   expect(asked[0]).toMatch(/spend your piggy bank on/)
 })
+
+test('the terminal shows the balance as a pink row above the prompt; the desktop app leaves it to the panel', async ($, on) => {
+  engine(on, { balance: 608, saved: 608, spent: 0, roundUps: 11, last: null, treats: [] })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const BAND = {
+    plugin: 'piggy-bank',
+    component: 'AbovePrompt',
+    requestId: 'band',
+    props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 4, bodyColumns: 80, scroll: { offset: 0, bodyRows: 4 }, view: {} },
+  } as const
+
+  const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const row = await terminal.find({ type: 'Text', text: /608 tokens saved/ })
+  expect(row?.props.color).toBe('#f08fb0')
+  await terminal.unmount()
+
+  const desktop = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await desktop.find({ type: 'Text', text: /608 tokens saved/ })).toBeUndefined()
+  await desktop.unmount()
+})

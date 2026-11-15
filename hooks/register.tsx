@@ -42,7 +42,7 @@ async function save($: Engine, next: Bank): Promise<void> {
   await show($, next)
 }
 
-/** Puts the bank on screen: the panel's value and the line under the prompt. */
+/** Puts the bank on screen: the value the panel and the terminal's row read. */
 async function show($: Engine, next: Bank): Promise<void> {
   const shown = await read($, bank)
 
@@ -50,7 +50,6 @@ async function show($: Engine, next: Bank): Promise<void> {
     await update($, bank, () => next)
   }
 
-  $.ui.status(`🐷 ${fmt(next.balance)}`)
 }
 
 /**
@@ -131,7 +130,7 @@ export const register: Register = on => {
 
     await $.command.register({
       name: COMMAND,
-      description: "Show Claude's piggy bank; `/piggybank ask` asks Claude what to spend it on",
+      description: "Show Claude's piggy bank; `/piggybank ask` asks Claude what to buy",
       argumentHint: '[ask]',
     })
     await $.tool.register({
@@ -160,13 +159,15 @@ export const register: Register = on => {
       },
     })
 
+    // Earlier versions pinned the balance as a status line; the row above the prompt replaces it.
+    $.ui.status(undefined)
     await load($)
     syncTimer?.cancel()
     syncTimer = $.clock.every(SYNC_MS, () => void load($).catch(() => undefined))
 
     // On the desktop app the pig opens as a panel beside the chat; minimised,
-    // it draws as the small widget. A terminal gets the line under the prompt,
-    // and the panel when asked with /piggybank.
+    // it draws as the small widget. A terminal gets the pink row above the
+    // prompt, and the panel when asked with /piggybank.
     if (e.surface !== 'terminal') {
       void $.ui.open({ id: PANE, title: TITLE }).catch(() => undefined)
     }
@@ -209,7 +210,7 @@ export const register: Register = on => {
       return { text: `🐷 Asking Claude what to do with ${fmt(current.balance)} saved tokens.` }
     }
 
-    return { text: `🐷 ${describe(current)}\n\nRun /${COMMAND} ask to ask Claude what to spend it on.` }
+    return { text: `🐷 ${describe(current)}\n\nRun /${COMMAND} ask to ask Claude what to buy.` }
   })
 
   // The two tools only read and change the bank's own tally, so a call that
@@ -250,6 +251,22 @@ export const register: Register = on => {
         `Took ${fmt(tokens)} tokens out for "${treat?.on ?? what}". ${fmt(taken.bank.balance)} left in the piggy bank. ` +
         `They are yours: use about ${fmt(tokens)} tokens of this reply on it.`,
     }
+  })
+
+  // The terminal's balance: one pink row above the prompt. The desktop app has the panel.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.surface !== 'terminal' || e.props.hasSurvey) {
+      return next(e)
+    }
+
+    const { Box, Text } = $.ui.resolve(e)
+    const current = await read($, bank)
+
+    return (
+      <Box>
+        <Text color={PINK}>🐷 {fmt(current.balance)} tokens saved</Text>
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
@@ -313,7 +330,7 @@ export const register: Register = on => {
         <Button
           key="ask"
           variant="primary"
-          label="Ask Claude what to spend it on"
+          label="Ask Claude what to buy"
           onPress={() => askSoon($)}
         />
 

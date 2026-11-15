@@ -17,7 +17,7 @@ A Claude Code mod that gives Claude a piggy bank. At the end of every turn, the 
 <td width="300" valign="top"><img src="assets/desktop-panel.png" alt="The Piggy bank panel in the desktop app: the pig, 512 tokens saved, a bar to the next thousand, the Ask Claude button and the treats list" width="300"></td>
 <td valign="top">
 
-**Desktop app (Code tab):** a panel beside the chat with the pig, the balance, a bar to the next 1,000, an **Ask Claude what to spend it on** button and a list of past treats.
+**Desktop app (Code tab):** a panel beside the chat with the pig, the balance, a bar to the next 1,000, an **Ask Claude what to buy** button and a list of past treats.
 
 Minimise it and it becomes a small widget showing the pig and the balance.
 
@@ -25,14 +25,14 @@ Minimise it and it becomes a small widget showing the pig and the balance.
 </tr>
 </table>
 
-**Terminal:** the balance on a line under the prompt (Claude Code puts the mod's name in front of it):
-
-<img src="assets/terminal-status.png" alt="The terminal status line: piggy-bank: 🐷 608" width="470">
+**Terminal:** a pink `🐷 608 tokens saved` row just above the prompt, and:
 
 - `/piggybank` shows the balance and opens the panel
-- `/piggybank ask` asks Claude what he wants to spend it on
+- `/piggybank ask` asks Claude what he wants to buy
 
 Or just ask Claude in chat what he'd buy with his piggy bank.
+
+It works on Windows, macOS and Linux: the mod uses nothing but Claude Code's own mod API, with no shell commands or file paths of its own. It has only been tried on Windows so far.
 
 ## Install
 
@@ -74,7 +74,7 @@ The first time Claude looks at his piggy bank in a conversation, the two tool de
 
 ### Does `/piggybank` or the panel cost tokens?
 
-Opening the panel and running `/piggybank` show what's already saved, so they shouldn't. Pressing **Ask Claude what to spend it on**, or `/piggybank ask`, sends Claude a message, and that costs what a message costs.
+Opening the panel and running `/piggybank` show what's already saved, so they shouldn't. Pressing **Ask Claude what to buy**, or `/piggybank ask`, sends Claude a message, and that costs what a message costs.
 
 ### What should I ask Claude to spend his tokens on?
 
