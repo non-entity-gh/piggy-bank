@@ -25,7 +25,9 @@ Minimise it and it becomes a small widget showing the pig and the balance.
 </tr>
 </table>
 
-**Terminal:** a pink `🐷 608 tokens saved` row just above the prompt, and:
+**Terminal:** a pink balance row just above the prompt:
+
+<img src="assets/terminal-status.png" alt="The terminal: a pink row reading 737 tokens saved, just above the prompt" width="470">
 
 - `/piggybank` shows the balance and opens the panel
 - `/piggybank ask` asks Claude what he wants to buy
