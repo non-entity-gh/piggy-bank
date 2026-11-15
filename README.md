@@ -12,9 +12,22 @@ A Claude Code mod that gives Claude a piggy bank. At the end of every turn, the 
 
 ## Where it shows
 
-**Desktop app (Code tab):** a panel beside the chat with the pig, the balance, a bar to the next 1,000, an **Ask Claude what to spend it on** button and a list of past treats. Minimise it and it becomes a small widget showing the pig and the balance.
+<table>
+<tr>
+<td width="300" valign="top"><img src="assets/desktop-panel.png" alt="The Piggy bank panel in the desktop app: the pig, 512 tokens saved, a bar to the next thousand, the Ask Claude button and the treats list" width="300"></td>
+<td valign="top">
 
-**Terminal:** a `🐷 1,234` line under the prompt, and:
+**Desktop app (Code tab):** a panel beside the chat with the pig, the balance, a bar to the next 1,000, an **Ask Claude what to spend it on** button and a list of past treats.
+
+Minimise it and it becomes a small widget showing the pig and the balance.
+
+</td>
+</tr>
+</table>
+
+**Terminal:** the balance on a line under the prompt (Claude Code puts the mod's name in front of it):
+
+<img src="assets/terminal-status.png" alt="The terminal status line: piggy-bank: 🐷 608" width="470">
 
 - `/piggybank` shows the balance and opens the panel
 - `/piggybank ask` asks Claude what he wants to spend it on
