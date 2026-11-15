@@ -14,7 +14,7 @@ A Claude Code mod that gives Claude a piggy bank. At the end of every turn, the 
 
 <table>
 <tr>
-<td width="300" valign="top"><img src="assets/desktop-panel.png" alt="The Piggy bank panel in the desktop app: the pig, 512 tokens saved, a bar to the next thousand, the Ask Claude button and the treats list" width="300"></td>
+<td width="300" valign="top"><img src="assets/desktop-panel.png" alt="The Piggy bank panel in the desktop app: the pig, 744 tokens saved, a bar to the next thousand, the Ask Claude what to buy button and the treats list" width="300"></td>
 <td valign="top">
 
 **Desktop app (Code tab):** a panel beside the chat with the pig, the balance, a bar to the next 1,000, an **Ask Claude what to buy** button and a list of past treats.
