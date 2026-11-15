@@ -1,0 +1,14 @@
+{
+  "name": "piggy-bank",
+  "owner": {
+    "name": "non-entity-gh"
+  },
+  "description": "Piggy Bank for Claude: lets Claude save up to buy himself treats",
+  "plugins": [
+    {
+      "name": "piggy-bank",
+      "source": "./",
+      "description": "Piggy Bank for Claude - Lets Claude save up to buy himself treats! Each turn's tokens are rounded up and the change is saved; ask Claude what he wants to spend it on"
+    }
+  ]
+}

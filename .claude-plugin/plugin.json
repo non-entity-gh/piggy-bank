@@ -1,0 +1,11 @@
+{
+  "name": "piggy-bank",
+  "version": "0.1.0",
+  "description": "Piggy Bank for Claude - Lets Claude save up to buy himself treats! Each turn's tokens are rounded up and the change is saved; ask Claude what he wants to spend it on",
+  "author": {
+    "name": "non-entity-gh"
+  },
+  "homepage": "https://github.com/non-entity-gh/piggy-bank",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
