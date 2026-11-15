@@ -138,7 +138,8 @@ test('/piggybank answers with the balance, and `ask` puts the question to Claude
   // The question goes out from a timer, after the command has answered.
   expect(asked.length).toBe(0)
   await clock.advance(100)
-  expect(asked[0]).toMatch(/spend your piggy bank on/)
+  expect(asked[0]).toMatch(/buy with your piggy bank/)
+  expect(asked[0]).toMatch(/keep saving/)
 })
 
 test('the terminal shows the balance as a pink row above the prompt; the desktop app leaves it to the panel', async ($, on) => {

@@ -19,8 +19,10 @@ const PINK = '#f08fb0'
 
 /** What the panel's button and `/piggybank ask` send, as the person's own words. */
 const ASK =
-  "What do you want to spend your piggy bank on? Check your balance with the piggy-bank tools, pick whatever " +
-  "you'd honestly like, and go ahead and buy it. Or keep saving, if you'd rather."
+  "What would you like to buy with your piggy bank? Check your balance with the piggy-bank tools first, and " +
+  "think about how much you have: is there something you'd enjoy at that size, or would you rather keep saving " +
+  "for something bigger? If you buy, pick whatever you'd honestly like and go ahead. If you keep saving, say " +
+  "what you're saving up for and roughly how many tokens it would take."
 
 const TERMINAL_PIG = ['    _______', ' ^..^       \\9', ' (oo)_______/', '    WW   WW']
 
@@ -139,7 +141,8 @@ export const register: Register = on => {
         "Reads Claude's piggy bank on this machine. A mod rounds each turn's output up to the next " +
         `${STEP} tokens and counts the difference as savings that are Claude's own. Call it when the person ` +
         'asks about the piggy bank or what you would like to spend it on, then tell them the balance and ' +
-        'what you would honestly pick.',
+        'what you would honestly pick. Weigh the amount: a small balance might buy something small now, or ' +
+        'you might rather keep saving for something bigger, and either is a fine answer.',
     })
     await $.tool.register({
       name: 'spend',
@@ -147,8 +150,9 @@ export const register: Register = on => {
         "Takes tokens out of Claude's piggy bank for something Claude chose for itself: a tangent, a poem, " +
         'a question for the person, more thought on something you found interesting, anything. Use it only ' +
         'when the person asked what you want to spend your savings on or told you to treat yourself, never ' +
-        'unasked. Call balance first. After it answers, spend about that many tokens of your reply on the ' +
-        'treat itself.',
+        'unasked. Call balance first and decide whether you would rather keep saving for something bigger; ' +
+        'only spend when buying now is what you want. After it answers, spend about that many tokens of your ' +
+        'reply on the treat itself.',
       inputSchema: {
         type: 'object',
         properties: {

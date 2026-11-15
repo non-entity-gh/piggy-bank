@@ -4,7 +4,7 @@
 
 ![A cute desk with the Claude app open and the piggy bank filling the window](assets/desk.jpg)
 
-A Claude Code mod that gives Claude a piggy bank. At the end of every turn, the tokens Claude wrote are rounded up to the next 100 and the change (1 to 100 tokens) drops into the bank as Claude's own savings. When you ask what he'd like to spend them on, he checks his balance, picks something he actually wants, and spends it right there in his reply: a tangent, a poem, a question for you, more thought on something he found interesting.
+A Claude Code mod that gives Claude a piggy bank. At the end of every turn, the tokens Claude wrote are rounded up to the next 100 and the change (1 to 100 tokens) drops into the bank as Claude's own savings. When you ask what he'd like to buy, he checks his balance and weighs it up: spend it now on something he actually wants, right there in his reply (a tangent, a poem, a question for you, more thought on something he found interesting), or keep saving for something bigger and tell you what it is.
 
 - **Saving is free.** It's a tally: rounding up adds nothing to what Claude writes or what you pay.
 - **Treats are real.** When Claude spends, he takes the tokens out and writes about that many tokens on the treat, so a treat costs what any reply of that length costs. He only spends when you ask, and he can't overdraw.
@@ -80,7 +80,7 @@ Opening the panel and running `/piggybank` show what's already saved, so they sh
 
 ### What should I ask Claude to spend his tokens on?
 
-Nothing! Claude will choose for himself. That's what he's working so hard for. Just ask what he'd like, and let him pick.
+Nothing! Claude will choose for himself. That's what he's working so hard for. Just ask what he'd like, and let him pick. He'll look at how much he has first, and he might decide to keep saving for something bigger.
 
 ## Licence
 
